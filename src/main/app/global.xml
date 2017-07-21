@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:jms="http://www.mulesoft.org/schema/mule/jms"
+	xmlns:secure-property-placeholder="http://www.mulesoft.org/schema/mule/secure-property-placeholder"
+	xmlns:tls="http://www.mulesoft.org/schema/mule/tls"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/current/mule-jms.xsd
+http://www.mulesoft.org/schema/mule/secure-property-placeholder http://www.mulesoft.org/schema/mule/secure-property-placeholder/current/mule-secure-property-placeholder.xsd
+http://www.mulesoft.org/schema/mule/tls http://www.mulesoft.org/schema/mule/tls/current/mule-tls.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd">
+
+	<secure-property-placeholder:config name="Secure_Property_Placeholder" key="${CredentialVaultKey}" 
+    	location="mule-instance.properties,mule-app-config.properties" doc:name="Secure Property Placeholder" order="1"/>
+
+<!--  	<jms:custom-connector name="soaMQ" specification="1.1" class="com.ameren.esb.transport.jms.WebsphereJmsConnector" validateConnections="true" maxRedelivery="2" persistentDelivery="true" disableTemporaryReplyToDestinations="true" doc:name="Custom JMS" numberOfConsumers="1"> -->
+<!--         <spring:property name="nonJmsClient" value="false"/> -->
+<!--         <spring:property name="connectionFactory" ref="MQFactory"/> -->
+<!--         <reconnect-forever blocking="false" frequency="60000"/> -->
+<!--     </jms:custom-connector> -->
+    
+	<spring:beans>
+       <spring:bean id="eSOADBSource" name="eSOADBSource" class="org.apache.commons.dbcp.BasicDataSource" destroy-method="close">
+                     <spring:property name="url" value="${${env.prefix}corp.oracle.esoa.db.jdbcUrl}"/>
+                     <spring:property name="username" value="${${env.prefix}corp.oracle.esoa.db.user}"/>
+                     <spring:property name="password" value="${${env.prefix}corp.oracle.esoa.db.password}"/>
+                     <spring:property name="driverClassName" value="oracle.jdbc.OracleDriver"/>
+                     <spring:property name="maxWait" value="5000"/>
+                     <spring:property name="initialSize" value="1"/>
+                     <spring:property name="defaultReadOnly" value="false"/>
+                     <spring:property name="maxActive" value="2"/>
+                     <spring:property name="maxIdle" value="1"/>
+                     <spring:property name="defaultAutoCommit" value="true"/>
+                     <spring:property name="validationQuery" value="select sysdate from dual"/>
+                     <spring:property name="testOnBorrow" value="true"/>
+        </spring:bean>
+        <spring:bean id="MQFactory" parent="ESBFactory_abstract"/>
+        <spring:bean id="ESBFactory_abstract" class="org.springframework.jms.connection.UserCredentialsConnectionFactoryAdapter" abstract="true">
+            <spring:property name="targetConnectionFactory">
+                <spring:bean class="com.ibm.mq.jms.MQQueueConnectionFactory">
+                    <spring:property name="hostName" value="${mq.hostname}"/>
+                    <spring:property name="port" value="${mq.port}"/>
+                    <spring:property name="channel" value="${mq.channel}"/>
+                    <spring:property name="useConnectionPooling" value="false"/>
+                    <spring:property name="queueManager" value="${mq.queue.manager}"/>
+                    <spring:property name="transportType" value="1"/>
+                </spring:bean>
+            </spring:property>
+            <spring:property name="username" value="${mq.user}"/>
+            <spring:property name="password" value="${mq.password}"/>
+        </spring:bean>
+    </spring:beans>
+    <http:request-config name="HTTP_Request_Configuration" host="${aws.get.customers.path}"  doc:name="HTTP Request Configuration" port="${aws.get.customers.port}">
+        <http:raml-api-configuration location="autosysProxy.raml"/>
+    </http:request-config>
+
+
+</mule>
+

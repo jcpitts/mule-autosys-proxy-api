@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd">
+    <flow name="InitiateFlow">
+<!--      	<set-variable variableName="flowName" value="initiateNotifyCustomers" doc:name="InitiateNotifyingCustomers"/> -->
+<!--         <flow-ref name="logStartMessage" doc:name="logStartMessage"/> -->
+		<set-property propertyName="http.status" value="#[message.inboundProperties['http.status']]" doc:name="Property"/>
+        <http:request config-ref="HTTP_Request_Configuration" path="${aws.get.customers.path}" method="GET" doc:name="HTTP"/>
+        <logger level="INFO" message="#[payload]" doc:name="Logger"/>
+        <logger level="INFO" message="#[message]" doc:name="Logger"/>
+    </flow>
+    
+    <flow name="ErrorResults">
+		<set-property propertyName="http.status" value="#[message.inboundProperties['http.status']]" doc:name="Property"/>
+		<byte-array-to-string-transformer doc:name="Byte Array to String"/>
+		<logger level="ERROR" message="#[payload]" doc:name="Logger"/>
+		<set-payload value="#['{
+  &quot;StatusCode&quot;: ' + message.inboundProperties['http.status'] + ',
+  &quot;Message&quot;: &quot;Error initiating customer notification!&quot;,
+  &quot;HasError&quot;: true
+}']" doc:name="Set Error Response"/>
+
+		<message-properties-transformer doc:name="Message Properties">
+			<add-message-property key="instanceId" value="#[server.host]"/>
+			<add-message-property key="messageId" value="#[server.dateTime.format('yyyy-MM-dd') + 'T' + server.dateTime.format('HH:mm:ss.SSS')]"/>
+			<add-message-property key="messageText" value="#[payload]"/>
+			<add-message-property key="severity" value="ERROR"/>
+		</message-properties-transformer>
+		<async doc:name="Async Log Scope">
+			<flow-ref name="logMessage" doc:name="logMessage"/>
+		</async>
+
+	</flow>
+</mule>

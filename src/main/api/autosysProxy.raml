@@ -1,0 +1,50 @@
+#%RAML 1.0
+title: Autosys Proxy API
+version: 1.0.0
+mediaType: application/json
+baseUri: http://0.0.0.0:8443/autosysproxy/{version}
+
+
+/notifycustomers:
+    
+ get:
+    description: Initiate Notify Customer Process
+    responses: 
+      202: 
+        body: 
+          application/json:
+           example: |
+                {
+                  "StatusCode": 202,
+                  "Message": "Success",
+                  "HasError": false
+                } 
+                
+      404: 
+        body: 
+          application/json:
+             example: |
+              {
+                "StatusCode": 404,
+                "Message": "No Data",
+                "HasError": false
+              }
+            
+      500:
+        body: 
+          application/json:
+            example: |
+              {
+                "StatusCode": 500,
+                "Message": "Server Error",
+                "HasError": true
+              }
+        
+    
+      
+      
+        
+
+              
+   
+        

@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:jms="http://www.mulesoft.org/schema/mule/jms"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/current/mule-jms.xsd
+http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd">
+
+    <configuration defaultExceptionStrategy-ref="Catch_Exception_Strategy" doc:name="Configuration" doc:description="Use as implicit default exception strategy."/>
+    <catch-exception-strategy name="Catch_Exception_Strategy">
+        <object-to-string-transformer doc:name="Object to String"/>
+        <message-properties-transformer doc:name="Set Message Properties to Log Flow Status">
+            <add-message-property key="appId" value="${event.service.appid}"/>
+            <add-message-property key="serviceId" value="${event.service.app.serviceid}"/>
+            <add-message-property key="environment" value="${environment}"/>
+            <add-message-property key="category" value="${event.service.app.category}"/>
+            <add-message-property key="instanceId" value="#[server.host]"/>
+            <add-message-property key="messageId" value="#[server.dateTime.format('yyyy-MM-dd') + 'T' + server.dateTime.format('HH:mm:ss.SSS')]"/>
+            <add-message-property key="sourceUser" value="${event.service.sourceUser}"/>
+            <add-message-property key="timeStamp" value="#[server.dateTime.format('yyyy-MM-dd') + 'T' + server.dateTime.format('HH:mm:ss')]"/>
+            <add-message-property key="messageText" value="#['Exception occurred during execution: ' + exception.getSummaryMessage()]"/>
+            <add-message-property key="severity" value="ERROR"/>
+            <add-message-property key="event" value="true"/>
+            <add-message-property key="transactionManagementSupport" value="false"/>
+            <add-message-property key="context" value="#['${event.service.app.instance} ' + flowVars['flowName']]"/>
+            <add-message-property key="bodyText" value="#['Error Message: ' + exception.getMessage() + '\n\nPayload:\n' + payload + '\n\nRoot Exception Stack Trace:\n\n' + exception.info]"/>
+            <add-message-property key="subject" value="#['Env ${environment}: ${event.service.app.category} Error ' + exception.getClass().getSimpleName() + '; Flow Name-' + flowVars['FlowName']]"/>
+            <add-message-property key="fromAddress" value="${event.service.fromAddress}"/>
+            <add-message-property key="toAddressList" value="${event.service.support.error.mailinglist}"/>
+        </message-properties-transformer>
+        <flow-ref name="corporateLoggerFlow" doc:name="corporateLoggerFlow"/>
+    </catch-exception-strategy>
+    
+    <flow name="logMessage">
+        <message-properties-transformer doc:name="Set Message Properties to Log Flow Status">
+            <add-message-property key="appId" value="${event.service.appid}"/>
+            <add-message-property key="serviceId" value="${event.service.app.serviceid}"/>
+            <add-message-property key="environment" value="${environment}"/>
+            <add-message-property key="category" value="${event.service.app.category}"/>
+            <add-message-property key="sourceUser" value="${event.service.sourceUser}"/>
+            <add-message-property key="timeStamp" value="#[server.dateTime.format('yyyy-MM-dd') + 'T' + server.dateTime.format('HH:mm:ss')]"/>
+            <add-message-property key="event" value="true"/>
+            <add-message-property key="transactionManagementSupport" value="false"/>
+            <add-message-property key="context" value="#['${event.service.app.instance} ' + flowVars['flowName']]"/>
+            <delete-message-property key="subject"/>
+            <delete-message-property key="fromAddress"/>
+            <delete-message-property key="toAddressList"/>
+            <!-- The calling flow should define the following as message output properties -->
+            <!-- 			 <add-message-property key="instanceId" value="#[server.host]"/> -->
+            <!-- 			 <add-message-property key="messageId" value="#[server.dateTime.format('yyyy-MM-dd') + 'T' + server.dateTime.format('HH:mm:ss.SSS')]"/> -->
+            <!-- 			 <add-message-property key="messageText" value="#[messageText]"/> -->
+			<!--             <add-message-property key="severity" value="INFO"/> -->
+        </message-properties-transformer>
+        <flow-ref name="corporateLoggerFlow" doc:name="corporateLoggerFlow"/>
+    </flow>
+    
+    <sub-flow name="corporateLoggerFlow">
+        <logger message="#[&quot;Sending message to Enterprise Logger...&quot;]" level="DEBUG" doc:name="Logger"/>
+        <logger level="INFO" message="#[flowVars['messageText']]" doc:name="Logger"/>
+        <set-payload value="#['']" doc:name="Clear Payload"/>
+        <message-properties-transformer doc:name="Remove Content-Type property.">
+            <add-message-property key="Content_Type" value="text/plain;charset=UTF-8"/>
+            <delete-message-property key="Content-Type"/>
+        </message-properties-transformer>
+<!--         <jms:outbound-endpoint queue="${event.service.queue}" connector-ref="soaMQ" doc:name="WMQ - Outbound - Corporate Logging Service SS.EVENT.SERVICE"/> -->
+    </sub-flow>
+
+	<flow name="logStartMessage">
+		<set-variable value="#['Starting...']" variableName="messageText" doc:name="Set Log MessageText Value"/>
+		<message-properties-transformer doc:name="Message Properties">
+			<add-message-property key="instanceId" value="#[server.host]"/>
+			<add-message-property key="messageId" value="#[server.dateTime.format('yyyy-MM-dd') + 'T' + server.dateTime.format('HH:mm:ss.SSS')]"/>
+			<add-message-property key="messageText" value="#[messageText]"/>
+			<add-message-property key="severity" value="DEBUG"/>
+		</message-properties-transformer>
+		<async doc:name="Async Log Scope">
+			<flow-ref name="logMessage" doc:name="Send Enterprise Logger Message"/>
+		</async>
+	</flow>
+    
+	<flow name="logFinishMessage">
+		<set-variable value="#['Finished...']" variableName="messageText" doc:name="Set Log MessageText Value"/>
+		<message-properties-transformer doc:name="Message Properties">
+			<add-message-property key="instanceId" value="#[server.host]"/>
+			<add-message-property key="messageId" value="#[server.dateTime.format('yyyy-MM-dd') + 'T' + server.dateTime.format('HH:mm:ss.SSS')]"/>
+			<add-message-property key="messageText" value="#[messageText]"/>
+			<add-message-property key="severity" value="INFO"/>
+		</message-properties-transformer>
+		<async doc:name="Async Log Scope">
+			<flow-ref name="logMessage" doc:name="logMessage"/>
+		</async>
+	</flow>
+
+</mule>

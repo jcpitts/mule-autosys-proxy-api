@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  	xmlns:mock="http://www.mulesoft.org/schema/mule/mock" 
+	xmlns:munit="http://www.mulesoft.org/schema/mule/munit"
+	xmlns="http://www.mulesoft.org/schema/mule/core" 
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" 
+	xsi:schemaLocation="http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/mock http://www.mulesoft.org/schema/mule/mock/current/mule-mock.xsd
+http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/munit http://www.mulesoft.org/schema/mule/munit/current/mule-munit.xsd">
+    <munit:config name="munit" doc:name="MUnit configuration"/>
+
+     <munit:test name="InitiateFlowTest" description="Verifying functionality of initiating flow">
+        <mock:when messageProcessor=" http" doc:name="Mock">
+            <mock:then-return payload="#[]">
+                <mock:inbound-properties>
+                    <mock:inbound-property key="http.status" value="200"/>
+                </mock:inbound-properties>
+            </mock:then-return>
+
+
+        </mock:when>
+        <http:request config-ref="HTTP_Request_Configuration" method="GET" path="${aws.get.customers.path}" doc:name="HTTP">
+            <http:success-status-code-validator values="100..299"/>
+        </http:request>
+        <logger level="INFO" doc:name="Logger"/>
+        <object-to-string-transformer doc:name="http response to string" />
+        <munit:assert-true message="The HTTP Status code is not correct!" condition="#[message.inboundProperties['http.status']==200]" doc:name="assert that - http.status eq 200" />
+
+    </munit:test>
+    <flow name="implementation-test-suiteFlow">
+        <munit:set payload="&quot;#['']&quot;" doc:name="Set Message"/>
+        <http:request config-ref="HTTP_Request_Configuration" path="${aws.get.customers.path}" method="GET" doc:name="HTTP"/>
+        <object-to-string-transformer doc:name="Object to String"/>
+        <munit:assert-true message="HTTP Status Code is incorrect" condition="#[messageInboundProperty('http.status').is(eq(200))]" doc:name="Assert True"/>
+    </flow>
+    <flow name="implementation-test-suiteFlow1">
+        <mock:throw-an whenCalling="http" exception-ref="#[new java.net.ConnectException()]" doc:name="Throw an Exception">
+            <mock:with-attributes>
+                <mock:with-attribute/>
+            </mock:with-attributes>
+           </mock:throw-an>
+        
+    </flow>
+    <munit:test name="TestAPIKit-404" description="TestApiKit-404">
+        <http:request config-ref="HTTP_Request_Configuration" path="${aws.get.customers.path}" method="POST" doc:name="HTTP">
+            <http:success-status-code-validator values="100..299"/>
+        </http:request>
+    </munit:test>
+ 
+
+
+	
+
+
+
+
+
+    
+</mule>

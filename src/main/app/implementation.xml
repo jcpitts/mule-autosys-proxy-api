@@ -1,20 +1,40 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<mule xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+<mule xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking" xmlns:json="http://www.mulesoft.org/schema/mule/json" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
 	xmlns:spring="http://www.springframework.org/schema/beans" 
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
 http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
-http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd">
-    <flow name="InitiateFlow">
-<!--      	<set-variable variableName="flowName" value="initiateNotifyCustomers" doc:name="InitiateNotifyingCustomers"/> -->
-<!--         <flow-ref name="logStartMessage" doc:name="logStartMessage"/> -->
-		<set-property propertyName="http.status" value="#[message.inboundProperties['http.status']]" doc:name="Property"/>
-        <http:request config-ref="HTTP_Request_Configuration" path="${aws.get.customers.path}" method="GET" doc:name="HTTP"/>
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/json/current/mule-json.xsd
+http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/mule/ee/tracking/current/mule-tracking-ee.xsd">
+    <flow name="NotifyCustomersAWS">
+     	<set-variable variableName="flowName" value="NotifyCustomersAWS" doc:name="NotifyCustomersAWS"/>
+        <flow-ref name="logStartMessage" doc:name="logStartMessage"/>
+        <async doc:name="Async">
+            <flow-ref name="SendToAWS" doc:name="SendToAWS"/>
+        </async>
+        <flow-ref name="AcceptedRequest" doc:name="AcceptedRequest"/>
+      
+    </flow>
+    <flow name="SendToAWS">
+            <http:request config-ref="HTTP_Request_Configuration" path="${aws.get.customers.path}" method="GET" doc:name="HTTP"/>
+        <byte-array-to-string-transformer doc:name="Byte Array to String"/>
+        <set-property propertyName="http.status" value="#[message.inboundProperties['http.status']]" doc:name="Property"/>
         <logger level="INFO" message="#[payload]" doc:name="Logger"/>
         <logger level="INFO" message="#[message]" doc:name="Logger"/>
+        <json:object-to-json-transformer doc:name="Object to JSON"/>
     </flow>
     
+    <flow name="AcceptedRequest">
+        <set-property propertyName="http.status" value="202" doc:name="Property"/>
+         <set-payload value="#['{
+ 		&quot;StatusCode&quot;: 202,
+  		&quot;Message&quot;: &quot;Request was accepted. Process to complete may take time. &quot;,
+  		&quot;HasError&quot;: false\n}']" doc:name="Set Error Response"/>
+  	</flow>
+    
+       
     <flow name="ErrorResults">
 		<set-property propertyName="http.status" value="#[message.inboundProperties['http.status']]" doc:name="Property"/>
 		<byte-array-to-string-transformer doc:name="Byte Array to String"/>

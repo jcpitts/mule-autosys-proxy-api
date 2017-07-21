@@ -15,7 +15,7 @@ http://www.springframework.org/schema/beans http://www.springframework.org/schem
         <apikit:console config-ref="autosysProxy-config" doc:name="APIkit Console"/>
     </flow>
     <flow name="get:/notifycustomers:autosysProxy-config">
-        <flow-ref name="autosysProxy-main" doc:name="autosysProxy-main"/>
+        <flow-ref name="NotifyCustomersAWS" doc:name="NotifyCustomersAWS"/>
 
     </flow>
     <apikit:mapping-exception-strategy name="autosysProxy-apiKitGlobalExceptionMapping">

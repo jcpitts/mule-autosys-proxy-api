@@ -56,9 +56,10 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
             <spring:property name="password" value="${mq.password}"/>
         </spring:bean>
     </spring:beans>
-    <http:request-config name="HTTP_Request_Configuration" host="${aws.get.customers.path}"  doc:name="HTTP Request Configuration" port="${aws.get.customers.port}">
-        <http:raml-api-configuration location="autosysProxy.raml"/>
+    <http:request-config name="HTTP_Request_Configuration" host="${aws.get.customers.host}"  doc:name="HTTP Request Configuration" port="${aws.get.customers.port}" responseTimeout="60000">
+        <http:proxy host="${proxy.hostname}" port="${proxy.port}" username="${ameren.domain.esbusername}" password="${ameren.domain.esbuserpassword}"/>
     </http:request-config>
+
 
 
 </mule>
